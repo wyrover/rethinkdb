@@ -1522,6 +1522,25 @@ TODO: retire this
 }
 #dataexplorer{
     margin: 0px;
+    .wrapper {
+        @media (min-width: 1331px) {
+            display: flex;
+            flex-wrap: wrap;
+            &> div {
+                flex-basis: 0;
+                min-width: 500px;
+                flex-grow: 1;
+                flex-shrink: 1;
+                &.input_query_full_container {
+                    margin-right: 10px;
+                }
+                &.results_container {
+                    margin-left: 10px;
+                }
+
+            }
+        }
+    }
     .options_container{
         float: right;
         margin-top: 5px;
@@ -1570,9 +1589,9 @@ TODO: retire this
         }
     }
     .input_query_full_container{
-        clear: both;
-        position: relative;
-        width: 100%;
+        // clear: both;
+        // position: relative;
+        // width: 50%;
         .suggestion_description_arrow{
             display: none;
             position: absolute;
