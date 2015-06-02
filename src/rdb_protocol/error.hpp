@@ -35,9 +35,12 @@ private:
 class base_exc_t : public std::exception {
 public:
     enum type_t {
-        GENERIC, // All errors except those below.
-
-        // The only thing that cares about these is `default`.
+        LOGIC, // An error in ReQL logic.
+        INTERNAL, // An internal error.
+        RESOURCE, // Exceeded array size limit.
+        OP_FAILED, // An operation is known to have failed.
+        OP_INDETERMINATE, // An operation is known to be indeterminate.
+        USER, // An error caused by `r.error` with arguments.
         EMPTY_USER, // An error caused by `r.error` with no arguments.
         NON_EXISTENCE // An error related to the absence of an expected value.
     };
@@ -49,7 +52,7 @@ protected:
     type_t type_;
 };
 ARCHIVE_PRIM_MAKE_RANGED_SERIALIZABLE(
-    base_exc_t::type_t, int8_t, base_exc_t::GENERIC, base_exc_t::NON_EXISTENCE);
+    base_exc_t::type_t, int8_t, base_exc_t::LOGIC, base_exc_t::NON_EXISTENCE);
 
 // NOTE: you usually want to inherit from `rcheckable_t` instead of calling this
 // directly.
@@ -129,13 +132,14 @@ private:
     } while (0)
 #define rcheck_array_size_datum(arr, limit, type) do {                  \
         auto _limit = (limit);                                          \
-        rcheck_datum((arr).size() <= _limit.array_size_limit(), (type),  \
+        rcheck_datum((arr).size() <= _limit.array_size_limit(),         \
+                     ql::base_exc_t::RESOURCE,                          \
                      strprintf("Array over size limit `%zu`.",          \
                                _limit.array_size_limit()).c_str());     \
     } while (0)
-#define rcheck_array_size(arr, limit, type) do {                        \
+#define rcheck_array_size(arr, limit) do {                              \
         auto _limit = (limit);                                          \
-        rcheck((arr).size() <= _limit.array_size_limit(), type,          \
+        rcheck((arr).size() <= _limit.array_size_limit(), ql::base_exc_t::RESOURCE, \
                strprintf("Array over size limit `%zu`.",                \
                          _limit.array_size_limit()).c_str());           \
     } while (0)
@@ -199,7 +203,7 @@ base_exc_t::type_t exc_type(const scoped_ptr_t<val_t> &v);
 class exc_t : public base_exc_t {
 public:
     // We have a default constructor because these are serialized.
-    exc_t() : base_exc_t(base_exc_t::GENERIC), message("UNINITIALIZED") { }
+    exc_t() : base_exc_t(base_exc_t::LOGIC), message("UNINITIALIZED") { }
     exc_t(base_exc_t::type_t type, const std::string &_message,
           backtrace_id_t _bt, size_t _dummy_frames = 0)
         : base_exc_t(type), message(_message), bt(_bt), dummy_frames_(_dummy_frames) { }
@@ -226,7 +230,7 @@ private:
 // turned into a normal `exc_t`.
 class datum_exc_t : public base_exc_t {
 public:
-    datum_exc_t() : base_exc_t(base_exc_t::GENERIC), message("UNINITIALIZED") { }
+    datum_exc_t() : base_exc_t(base_exc_t::LOGIC), message("UNINITIALIZED") { }
     explicit datum_exc_t(base_exc_t::type_t type, const std::string &_message)
         : base_exc_t(type), message(_message) { }
     virtual ~datum_exc_t() throw () { }
